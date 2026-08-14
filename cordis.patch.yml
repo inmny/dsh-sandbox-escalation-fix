@@ -1,0 +1,5 @@
+# Install the compatibility shim in the host composition.
+
+- insert:
+    - id: sandbox-escalation-fix
+      name: 'dsh-plugin-sandbox-escalation-fix'

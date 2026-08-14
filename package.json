@@ -1,0 +1,76 @@
+{
+  "name": "dsh-plugin-sandbox-escalation-fix",
+  "version": "0.1.0",
+  "description": "Normalize redundant same-mode sandbox escalation arguments in DeepSeek Harness tools",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "sandbox",
+    "approval"
+  ],
+  "homepage": "https://github.com/inmny/dsh-sandbox-escalation-fix#readme",
+  "bugs": {
+    "url": "https://github.com/inmny/dsh-sandbox-escalation-fix/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inmny/dsh-sandbox-escalation-fix.git"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "assets/teaser.png",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('lib', { recursive: true, force: true })\"",
+    "build": "pnpm run clean && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node --test",
+    "pack:check": "npm pack --dry-run",
+    "prepack": "pnpm run build",
+    "prepublishOnly": "pnpm test"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-agent": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-sandbox": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-sandbox-policy": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-agent": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-sandbox": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-sandbox-policy": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  },
+  "packageManager": "pnpm@11.9.0"
+}
