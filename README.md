@@ -32,7 +32,7 @@ this call's current "danger-full-access" mode
 从 npm 安装固定版本到 Web profile：
 
 ```sh
-dsh plugin --profile web add dsh-plugin-sandbox-escalation-fix@0.1.0
+dsh plugin --profile web add dsh-plugin-sandbox-escalation-fix@0.1.1
 ```
 
 更新现有安装时使用同一条命令。安装完成后重启 `dsh web`，让 Host 加载新插件，然后新建会话。

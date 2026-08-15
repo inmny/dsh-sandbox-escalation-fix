@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-sandbox-escalation-fix",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Normalize non-widening sandbox requests and missing justifications in DeepSeek Harness tools",
   "keywords": [
     "deepseek-harness",
