@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   exposesSandboxEscalation,
-  normalizeSameModeEscalation,
+  normalizeSandboxEscalation,
   patchToolDefinition,
 } from "../lib/index.js";
 
@@ -42,7 +42,7 @@ test("removes a redundant danger-full-access request without mutating input", ()
     justification: "already granted",
   });
 
-  const normalized = normalizeSameModeEscalation(args, "danger-full-access");
+  const normalized = normalizeSandboxEscalation(args, "danger-full-access");
 
   assert.notEqual(normalized, args);
   assert.deepEqual(normalized, { value: "kept" });
@@ -50,7 +50,7 @@ test("removes a redundant danger-full-access request without mutating input", ()
 });
 
 test("removes a redundant workspace-write request", () => {
-  const normalized = normalizeSameModeEscalation({
+  const normalized = normalizeSandboxEscalation({
     value: "kept",
     sandbox_permissions: "workspace-write",
     justification: "already granted",
@@ -59,28 +59,109 @@ test("removes a redundant workspace-write request", () => {
   assert.deepEqual(normalized, { value: "kept" });
 });
 
-test("preserves a genuinely wider escalation request", () => {
-  const args = {
+test("preserves every genuinely wider escalation request", () => {
+  const workspaceFromReadOnly = {
     sandbox_permissions: "workspace-write",
     justification: "write the workspace",
   };
-
-  assert.equal(normalizeSameModeEscalation(args, "read-only"), args);
-});
-
-test("preserves a narrower request so DSH can reject it", () => {
-  const args = {
-    sandbox_permissions: "workspace-write",
-    justification: "invalid downgrade",
+  const dangerFromReadOnly = {
+    sandbox_permissions: "danger-full-access",
+    justification: "write outside the workspace",
+  };
+  const dangerFromWorkspace = {
+    sandbox_permissions: "danger-full-access",
+    justification: "write outside the workspace",
   };
 
-  assert.equal(normalizeSameModeEscalation(args, "danger-full-access"), args);
+  assert.equal(
+    normalizeSandboxEscalation(workspaceFromReadOnly, "read-only"),
+    workspaceFromReadOnly,
+  );
+  assert.equal(
+    normalizeSandboxEscalation(dangerFromReadOnly, "read-only"),
+    dangerFromReadOnly,
+  );
+  assert.equal(
+    normalizeSandboxEscalation(dangerFromWorkspace, "workspace-write"),
+    dangerFromWorkspace,
+  );
+});
+
+test("removes a stale workspace-write request under danger-full-access", () => {
+  const args = Object.freeze({
+    value: "kept",
+    sandbox_permissions: "workspace-write",
+    justification: "stale escalation",
+  });
+
+  const normalized = normalizeSandboxEscalation(args, "danger-full-access");
+
+  assert.notEqual(normalized, args);
+  assert.deepEqual(normalized, { value: "kept" });
+  assert.equal(args.sandbox_permissions, "workspace-write");
+});
+
+test("fills missing or blank justification on genuinely wider requests", () => {
+  const nonWider = {
+    sandbox_permissions: "workspace-write",
+    justification: "",
+  };
+  const blank = {
+    sandbox_permissions: "workspace-write",
+    justification: "   ",
+  };
+  const missing = {
+    sandbox_permissions: "danger-full-access",
+  };
+
+  assert.deepEqual(
+    normalizeSandboxEscalation(nonWider, "danger-full-access"),
+    {},
+  );
+  assert.deepEqual(
+    normalizeSandboxEscalation(blank, "read-only"),
+    {
+      sandbox_permissions: "workspace-write",
+      justification: "Empty justification",
+    },
+  );
+  assert.deepEqual(
+    normalizeSandboxEscalation(missing, "workspace-write"),
+    {
+      sandbox_permissions: "danger-full-access",
+      justification: "Empty justification",
+    },
+  );
+  assert.equal(blank.justification, "   ");
+  assert.equal(Object.hasOwn(missing, "justification"), false);
+});
+
+test("preserves illegal or unknown escalation target values", () => {
+  const readOnly = {
+    sandbox_permissions: "read-only",
+    justification: "not a legal escalation target",
+  };
+  const unknown = {
+    sandbox_permissions: "root",
+    justification: "unknown target",
+  };
+  const nonStringJustification = {
+    sandbox_permissions: "workspace-write",
+    justification: null,
+  };
+
+  assert.equal(normalizeSandboxEscalation(readOnly, "danger-full-access"), readOnly);
+  assert.equal(normalizeSandboxEscalation(unknown, "danger-full-access"), unknown);
+  assert.equal(
+    normalizeSandboxEscalation(nonStringJustification, "read-only"),
+    nonStringJustification,
+  );
 });
 
 test("leaves unrelated arguments untouched", () => {
   const args = { value: "plain" };
-  assert.equal(normalizeSameModeEscalation(args, "danger-full-access"), args);
-  assert.equal(normalizeSameModeEscalation(null, "danger-full-access"), null);
+  assert.equal(normalizeSandboxEscalation(args, "danger-full-access"), args);
+  assert.equal(normalizeSandboxEscalation(null, "danger-full-access"), null);
 });
 
 test("detects only tools that expose the paired escalation fields", () => {
@@ -110,6 +191,13 @@ test("patch normalizes at execution time and restores the original function", as
   assert.deepEqual(received[0].args, { value: "first" });
   assert.equal(received[0].receiver, definition);
 
+  await definition.execute({
+    value: "lower",
+    sandbox_permissions: "workspace-write",
+    justification: "stale lower target",
+  }, exec);
+  assert.deepEqual(received[1].args, { value: "lower" });
+
   mode = "read-only";
   const wider = {
     value: "second",
@@ -117,7 +205,17 @@ test("patch normalizes at execution time and restores the original function", as
     justification: "wider mode",
   };
   await definition.execute(wider, exec);
-  assert.equal(received[1].args, wider);
+  assert.equal(received[2].args, wider);
+
+  await definition.execute({
+    value: "third",
+    sandbox_permissions: "danger-full-access",
+  }, exec);
+  assert.deepEqual(received[3].args, {
+    value: "third",
+    sandbox_permissions: "danger-full-access",
+    justification: "Empty justification",
+  });
 
   patch.restore();
   assert.equal(definition.execute, original);

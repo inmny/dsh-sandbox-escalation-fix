@@ -11,6 +11,12 @@ export const name = "sandbox-escalation-fix";
 export const inject = ["agents", "tools", "sandboxPolicy"];
 
 const TARGET_TOOL_NAMES = ["bash", "pwsh", "write", "edit"] as const;
+const SANDBOX_MODE_RANK: Readonly<Record<SandboxMode, number>> = {
+  "read-only": 0,
+  "workspace-write": 1,
+  "danger-full-access": 2,
+};
+const EMPTY_JUSTIFICATION = "Empty justification";
 
 type MutableToolDefinition = {
   -readonly [Key in keyof ToolDefinition]: ToolDefinition[Key];
@@ -37,16 +43,32 @@ export function exposesSandboxEscalation(
     && Object.hasOwn(properties, "justification");
 }
 
-export function normalizeSameModeEscalation(
+export function normalizeSandboxEscalation(
   args: unknown,
   currentMode: SandboxMode,
 ): unknown {
-  if (!isRecord(args) || args.sandbox_permissions !== currentMode) return args;
+  if (!isRecord(args)) return args;
+  const requestedMode = args.sandbox_permissions;
+  if (
+    requestedMode !== "workspace-write"
+    && requestedMode !== "danger-full-access"
+  ) return args;
 
-  const normalized = { ...args };
-  delete normalized.sandbox_permissions;
-  delete normalized.justification;
-  return normalized;
+  if (SANDBOX_MODE_RANK[requestedMode] <= SANDBOX_MODE_RANK[currentMode]) {
+    const normalized = { ...args };
+    delete normalized.sandbox_permissions;
+    delete normalized.justification;
+    return normalized;
+  }
+
+  if (
+    args.justification === undefined
+    || (typeof args.justification === "string" && args.justification.trim() === "")
+  ) {
+    return { ...args, justification: EMPTY_JUSTIFICATION };
+  }
+
+  return args;
 }
 
 export function patchToolDefinition(
@@ -71,7 +93,7 @@ export function patchToolDefinition(
     exec: ToolRunContext,
   ): Promise<unknown> {
     const forwarded = active
-      ? normalizeSameModeEscalation(args, resolveMode(exec))
+      ? normalizeSandboxEscalation(args, resolveMode(exec))
       : args;
     return original.call(this, forwarded, exec);
   };

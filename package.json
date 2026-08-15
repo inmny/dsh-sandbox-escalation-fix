@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-sandbox-escalation-fix",
   "version": "0.1.0",
-  "description": "Normalize redundant same-mode sandbox escalation arguments in DeepSeek Harness tools",
+  "description": "Normalize non-widening sandbox requests and missing justifications in DeepSeek Harness tools",
   "keywords": [
     "deepseek-harness",
     "dsh",
@@ -31,6 +31,8 @@
   "files": [
     "lib",
     "assets/teaser.png",
+    "assets/teaser_add.png",
+    "assets/teaser_justification.png",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
