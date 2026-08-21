@@ -23,6 +23,12 @@ this call's current "danger-full-access" mode
 
 ![DSH 缺少非空 justification](assets/teaser_justification.png)
 
+反过来，如果模型只提供 `justification`，却没有提供 `sandbox_permissions`，插件会忽略这个没有实际作用的理由，避免触发下面的参数配对错误：
+
+```text
+Error: invalid escalation: justification is only valid together with sandbox_permissions
+```
+
 安装后，如果模型请求的权限不比 Session 当前权限更高，插件就忽略这个无效的提权请求，并使用当前 Session 权限正常执行工具。真正更宽的请求仍进入 DSH 审批流程；缺失或空白的理由会使用上述 fallback，合法的非空理由保持不变。`read-only`、未知 target 或非字符串 justification 等非法值仍由 DSH 拒绝。
 
 插件只作为 bundle layer 安装到目标 profile，不修改 DSH 安装目录。
@@ -32,7 +38,7 @@ this call's current "danger-full-access" mode
 从 npm 安装固定版本到 Web profile：
 
 ```sh
-dsh plugin --profile web add dsh-plugin-sandbox-escalation-fix@0.1.1
+dsh plugin --profile web add dsh-plugin-sandbox-escalation-fix@0.1.2
 ```
 
 更新现有安装时使用同一条命令。安装完成后重启 `dsh web`，让 Host 加载新插件，然后新建会话。
@@ -65,6 +71,7 @@ dsh plugin --profile web remove dsh-plugin-sandbox-escalation-fix
 | `workspace-write` | `danger-full-access` | 保持参数，继续走原有审批 |
 | `danger-full-access` | `danger-full-access` | 删除冗余参数，按普通调用执行 |
 | `danger-full-access` | `workspace-write` | 删除过时参数，按普通调用执行 |
+| 任意 mode | 未提供，只有 `justification` | 删除无效理由，按普通调用执行 |
 
 `approval: never` 表示审批请求自动拒绝，不表示自动授予权限。本插件只让不高于当前权限的无效请求不再误入审批路径，不会放行真正的提权请求。
 
@@ -75,7 +82,7 @@ DSH `0.1.0-rc.6` 的公开 `tools/pre-execute` Waterfall 接收到的参数已�
 ```text
 model tool call
   -> resolve current per-session sandbox policy
-  -> ignore escalation targets no higher than the current mode or fill a missing reason
+  -> ignore unnecessary targets, remove an orphan reason, or fill a missing reason
   -> original DSH tool validation and execution
 ```
 
@@ -101,7 +108,7 @@ pnpm test
 pnpm run pack:check
 ```
 
-测试覆盖同级与过时低级参数正规化、真正升级保留、缺失理由 fallback、非法 target 拒绝、全局和 scoped 工具、不同 Session mode、启动回滚、动态不兼容定义、Agent 生命周期、HMR 清理以及卸载恢复。
+测试覆盖同级与过时低级参数正规化、真正升级保留、缺失理由 fallback、孤立理由清理、非法 target 拒绝、全局和 scoped 工具、不同 Session mode、启动回滚、动态不兼容定义、Agent 生命周期、HMR 清理以及卸载恢复。
 
 ## License
 
