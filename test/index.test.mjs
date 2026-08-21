@@ -101,6 +101,19 @@ test("removes a stale workspace-write request under danger-full-access", () => {
   assert.equal(args.sandbox_permissions, "workspace-write");
 });
 
+test("removes an orphan justification without mutating input", () => {
+  const args = Object.freeze({
+    value: "kept",
+    justification: "orphan reason",
+  });
+
+  const normalized = normalizeSandboxEscalation(args, "workspace-write");
+
+  assert.notEqual(normalized, args);
+  assert.deepEqual(normalized, { value: "kept" });
+  assert.equal(args.justification, "orphan reason");
+});
+
 test("fills missing or blank justification on genuinely wider requests", () => {
   const nonWider = {
     sandbox_permissions: "workspace-write",

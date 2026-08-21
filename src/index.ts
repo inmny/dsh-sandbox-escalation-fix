@@ -49,6 +49,12 @@ export function normalizeSandboxEscalation(
 ): unknown {
   if (!isRecord(args)) return args;
   const requestedMode = args.sandbox_permissions;
+  if (requestedMode === undefined) {
+    if (!Object.hasOwn(args, "justification")) return args;
+    const normalized = { ...args };
+    delete normalized.justification;
+    return normalized;
+  }
   if (
     requestedMode !== "workspace-write"
     && requestedMode !== "danger-full-access"
